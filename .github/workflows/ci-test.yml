@@ -19,7 +19,7 @@ jobs:
 
       - name: Build and run containers
         run: |
-          docker-compose up -d --build
+          docker compose up -d --build
           sleep 20
 
       - name: Run API tests
@@ -52,3 +52,11 @@ jobs:
           body: "The CI test failed. Please check the GitHub Actions logs."
           to: ntimsit@g.jct.ac.il
           from: GitHub Actions
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Stop containers
+        if: always()
+        run: docker compose down
