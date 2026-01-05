@@ -20,7 +20,18 @@ jobs:
       - name: Build and run containers
         run: |
           docker compose up -d --build
-          sleep 20
+
+      - name: Wait for API to be ready
+        run: |
+          echo "Waiting for Flask API..."
+          for i in {1..20}; do
+            if curl -s http://localhost:5000/recipes > /dev/null; then
+              echo "API is ready"
+              break
+            fi
+            echo "Waiting 3s..."
+            sleep 3
+          done
 
       - name: Run API tests
         run: |
@@ -40,6 +51,10 @@ jobs:
           docker tag flask-app-1 ${{ secrets.DOCKERHUB_USERNAME }}/recipes_flask:latest
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/recipes_flask:latest
 
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
       - name: Send failure email
         if: failure()
         uses: dawidd6/action-send-mail@v3
@@ -52,10 +67,6 @@ jobs:
           body: "The CI test failed. Please check the GitHub Actions logs."
           to: ntimsit@g.jct.ac.il
           from: GitHub Actions
-
-      - name: Show logs on failure
-        if: failure()
-        run: docker compose logs
 
       - name: Stop containers
         if: always()
