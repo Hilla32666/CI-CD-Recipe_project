@@ -25,13 +25,14 @@ jobs:
         run: |
           echo "Waiting for Flask API..."
           for i in {1..20}; do
-            if curl -s http://localhost/recipes > /dev/null
+            if curl -s http://localhost/recipes > /dev/null; then
               echo "API is ready"
               break
             fi
             echo "Waiting 3s..."
             sleep 3
           done
+
 
       - name: Run API tests
         run: |
