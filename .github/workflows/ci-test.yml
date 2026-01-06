@@ -25,7 +25,7 @@ jobs:
         run: |
           echo "Waiting for Flask API..."
           for i in {1..20}; do
-            if curl -s http://localhost:5000/recipes > /dev/null; then
+            if curl -s http://localhost/recipes > /dev/null
               echo "API is ready"
               break
             fi
@@ -36,7 +36,9 @@ jobs:
       - name: Run API tests
         run: |
           pip install requests
-          BASE_URL=http://localhost:5000 python3 tests/recipes-test.py
+          export BASE_URL=http://localhost/recipes
+          python3 tests/recipes-test.py
+  
 
       - name: Login to Docker Hub
         if: success()

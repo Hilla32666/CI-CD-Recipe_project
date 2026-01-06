@@ -1,7 +1,9 @@
 import requests
 import sys
+import os
 
-BASE_URL = "http://localhost/recipes"
+BASE_URL = os.getenv("BASE_URL", "http://localhost/recipes")
+
 
 def main():
     # נתוני מתכון לדוגמה
