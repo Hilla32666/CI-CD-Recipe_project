@@ -5,6 +5,8 @@ on:
     branches:
       - master
   pull_request:
+    branches:
+      - master
 
 jobs:
   test-recipes:
@@ -14,11 +16,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Docker
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and run containers
-        run: docker compose up -d --build
+      - name: Build Docker Image
+        # בניית האימג' עם שם מוגדר מראש כדי למנוע שגיאות זיהוי
+        run: docker build -t recipes_flask:latest ./server
+
+      - name: Run containers
+        # הרצת הקונטיינרים ללא בנייה מחדש כדי להשתמש באימג' שתייגנו
+        run: docker compose up -d
 
       - name: Wait for API to be ready
         run: |
@@ -26,31 +33,40 @@ jobs:
           for i in {1..20}; do
             if curl -s http://localhost:5000/recipes > /dev/null; then
               echo "API is ready"
-              break
+              exit 0
             fi
             echo "Waiting 3s..."
             sleep 3
           done
+          echo "API failed to start"
+          exit 1
 
       - name: Run API tests inline
         run: |
           python3 - << 'EOF'
           import requests
           import sys
+
           BASE_URL = "http://localhost:5000/recipes"
+
           try:
-              # POST
-              example_recipe = {"name": "Test Recipe", "ingredients": ["ing1","ing2"], "instructions": "Mix well."}
+              # POST – הוספת מתכון
+              example_recipe = {
+                  "name": "Test Recipe",
+                  "ingredients": ["ing1", "ing2"],
+                  "instructions": "Mix well."
+              }
               r_post = requests.post(BASE_URL, json=example_recipe)
               if r_post.status_code != 201:
                   print(f"POST failed: {r_post.status_code}")
                   sys.exit(1)
+
               recipe_id = r_post.json().get("id")
               if not recipe_id:
                   print("No ID returned")
                   sys.exit(1)
 
-              # DELETE
+              # DELETE – מחיקת המתכון
               r_delete = requests.delete(f"{BASE_URL}/{recipe_id}")
               if r_delete.status_code != 200:
                   print(f"DELETE failed: {r_delete.status_code}")
@@ -72,7 +88,8 @@ jobs:
       - name: Push Docker Image
         if: success()
         run: |
-          docker tag flask-app-1 ${{ secrets.DOCKERHUB_USERNAME }}/recipes_flask:latest
+          # תיוג האימג' שנבנה בשלב הראשון עם שם המשתמש מ-Secrets
+          docker tag recipes_flask:latest ${{ secrets.DOCKERHUB_USERNAME }}/recipes_flask:latest
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/recipes_flask:latest
 
       - name: Show logs on failure
