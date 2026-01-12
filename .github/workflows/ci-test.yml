@@ -23,48 +23,45 @@ jobs:
 
       - name: Wait for API to be ready
         run: |
-          echo "Waiting for Flask API..."
-          for i in {1..20}; do
+          echo "Waiting for API..."
+          for i in {1..30}; do
             if curl -s http://localhost/recipes > /dev/null; then
               echo "API is ready"
               break
             fi
-            echo "Waiting 3s..."
             sleep 3
           done
 
-      - name: Run API tests (inline)
+      - name: Install Python dependencies
         run: |
-          pip install requests
+          pip install -r server/requirements.txt
+
+      - name: Run API test (inline)
+        run: |
           python3 - << 'EOF'
-          import requests
-          import sys
-          import time
+          import requests, sys
 
           BASE_URL = "http://localhost/recipes"
-          time.sleep(5)
 
           recipe = {
               "name": "CI Test Recipe",
               "ingredients": ["a", "b"],
-              "instructions": "mix"
+              "instructions": "Mix"
           }
 
-          # POST
           r = requests.post(BASE_URL, json=recipe)
           if r.status_code != 201:
-              print("POST failed:", r.status_code, r.text)
+              print("POST failed:", r.status_code)
               sys.exit(1)
 
           recipe_id = r.json().get("id")
           if not recipe_id:
-              print("No id returned from POST")
+              print("No ID returned")
               sys.exit(1)
 
-          # DELETE
           r = requests.delete(f"{BASE_URL}/{recipe_id}")
           if r.status_code != 200:
-              print("DELETE failed:", r.status_code, r.text)
+              print("DELETE failed:", r.status_code)
               sys.exit(1)
 
           print("API TEST PASSED")
@@ -95,8 +92,8 @@ jobs:
           server_port: 587
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "GitHub Actions – Recipes API Test Failed"
-          body: "The CI test failed. Please check the GitHub Actions logs."
+          subject: "Recipes CI Failed"
+          body: "The API test failed in GitHub Actions."
           to: ntimsit@g.jct.ac.il
           from: GitHub Actions
 
