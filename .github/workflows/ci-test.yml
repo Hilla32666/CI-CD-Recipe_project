@@ -33,13 +33,42 @@ jobs:
             sleep 3
           done
 
-
-      - name: Run API tests
+      - name: Run API tests (inline)
         run: |
           pip install requests
-          export BASE_URL=http://localhost/recipes
-          python3 tests/recipes-test.py
-  
+          python3 - << 'EOF'
+          import requests
+          import sys
+          import time
+
+          BASE_URL = "http://localhost/recipes"
+          time.sleep(5)
+
+          recipe = {
+              "name": "CI Test Recipe",
+              "ingredients": ["a", "b"],
+              "instructions": "mix"
+          }
+
+          # POST
+          r = requests.post(BASE_URL, json=recipe)
+          if r.status_code != 201:
+              print("POST failed:", r.status_code, r.text)
+              sys.exit(1)
+
+          recipe_id = r.json().get("id")
+          if not recipe_id:
+              print("No id returned from POST")
+              sys.exit(1)
+
+          # DELETE
+          r = requests.delete(f"{BASE_URL}/{recipe_id}")
+          if r.status_code != 200:
+              print("DELETE failed:", r.status_code, r.text)
+              sys.exit(1)
+
+          print("API TEST PASSED")
+          EOF
 
       - name: Login to Docker Hub
         if: success()
